@@ -1,29 +1,67 @@
 import { useState } from "react";
+import type { ChatMessage } from "../core/ai/types";
 
-type Message = { id: string; role: "user" | "assistant"; content: string };
+type Message = ChatMessage & { id: string };
 
 const welcome: Message = {
   id: "welcome",
   role: "assistant",
-  content: "Hello! I’m ExcellAI. I’m ready to help you think, create, code, research, and build."
+  content: "Hello! I’m ExcellAI. The secure AI pipeline is connected. I can now send messages through Electron IPC to the registered provider layer."
 };
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([welcome]);
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  function sendMessage() {
+  async function sendMessage() {
     const text = input.trim();
-    if (!text) return;
-    const user: Message = { id: crypto.randomUUID(), role: "user", content: text };
-    const assistant: Message = {
+    if (!text || busy) return;
+
+    const user: Message = {
       id: crypto.randomUUID(),
-      role: "assistant",
-      content: "I received your message. The ExcellAI provider/orchestrator layer will connect this interface to real AI models without hard-coded API keys."
+      role: "user",
+      content: text
     };
-    setMessages((current) => [...current, user, assistant]);
+
+    const nextMessages = [...messages, user];
+    setMessages(nextMessages);
     setInput("");
+    setError("");
+    setBusy(true);
+
+    try {
+      if (!window.excellAI) {
+        throw new Error("ExcellAI desktop bridge is unavailable.");
+      }
+
+      const response = await window.excellAI.aiChat("mock", {
+        model: "mock",
+        messages: nextMessages.map(({ role, content }) => ({ role, content }))
+      });
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: response.id,
+          role: "assistant",
+          content: response.content
+        }
+      ]);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "The AI request failed.";
+      setError(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function newChat() {
+    setMessages([welcome]);
+    setInput("");
+    setError("");
   }
 
   return (
@@ -31,7 +69,7 @@ export default function App() {
       {sidebarOpen && (
         <aside className="sidebar">
           <div className="brand"><span className="brand-mark">E</span><span>ExcellAI</span></div>
-          <button className="new-chat" onClick={() => setMessages([welcome])}>＋ New chat</button>
+          <button className="new-chat" onClick={newChat}>＋ New chat</button>
           <div className="nav-section">
             <span>Workspace</span>
             <button>⌂ Home</button>
@@ -39,7 +77,7 @@ export default function App() {
             <button>◈ Projects</button>
             <button>⚙ Settings</button>
           </div>
-          <div className="sidebar-footer">AI workspace · v0.1</div>
+          <div className="sidebar-footer">AI workspace · secure IPC · v0.1</div>
         </aside>
       )}
 
@@ -62,26 +100,37 @@ export default function App() {
                 </div>
               </article>
             ))}
+            {busy && (
+              <article className="message assistant">
+                <div className="avatar">E</div>
+                <div className="message-content">
+                  <div className="message-role">ExcellAI</div>
+                  <div>Thinking through the provider pipeline…</div>
+                </div>
+              </article>
+            )}
           </div>
 
           <div className="composer-wrap">
+            {error && <div className="error-banner">{error}</div>}
             <div className="composer">
               <textarea
                 value={input}
+                disabled={busy}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    sendMessage();
+                    void sendMessage();
                   }
                 }}
-                placeholder="Message ExcellAI..."
+                placeholder={busy ? "ExcellAI is processing…" : "Message ExcellAI..."}
                 rows={1}
               />
               <div className="composer-actions">
-                <button className="attach">＋</button>
-                <span>Shift + Enter for new line</span>
-                <button className="send" onClick={sendMessage} aria-label="Send">↑</button>
+                <button className="attach" disabled>＋</button>
+                <span>Enter to send · Shift + Enter for new line</span>
+                <button className="send" disabled={busy || !input.trim()} onClick={() => void sendMessage()} aria-label="Send">↑</button>
               </div>
             </div>
             <p className="disclaimer">ExcellAI can make mistakes. Verify important information.</p>
