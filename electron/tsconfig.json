@@ -7,7 +7,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "../dist-electron",
-    "rootDir": "."
+    "rootDir": ".."
   },
-  "include": ["main.ts", "preload.ts"]
+  "include": ["electron/**/*.ts", "core/**/*.ts"]
 }
