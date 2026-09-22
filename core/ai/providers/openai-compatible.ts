@@ -1,5 +1,5 @@
-import type { ChatRequest, ChatResponse, ModelCapabilities } from "../types";
-import { ProviderNotConfiguredError } from "../errors";
+import type { ChatRequest, ChatResponse, ChatStreamChunk, ModelCapabilities } from "../types";
+import { AIError, ProviderNotConfiguredError } from "../errors";
 import type { CloudProviderId, CredentialStore } from "../credentials/types";
 import { postJson } from "./http";
 import { createResponse } from "./normalize";
@@ -46,10 +46,86 @@ export class OpenAICompatibleProvider {
       choices?: Array<{ message?: { content?: unknown } }>;
     };
 
-    return createResponse(
-      this.config.id,
-      request.model,
-      data.choices?.[0]?.message?.content
-    );
+    return createResponse(this.config.id, request.model, data.choices?.[0]?.message?.content);
+  }
+
+  async *chatStream(request: ChatRequest): AsyncIterable<ChatStreamChunk> {
+    const key = await this.credentials.get(this.config.id);
+    if (!key) throw new ProviderNotConfiguredError(this.config.id);
+
+    const response = await fetch(this.config.baseUrl + "/chat/completions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer " + key
+      },
+      body: JSON.stringify({
+        model: request.model,
+        messages: request.messages,
+        stream: true,
+        ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+        ...(request.maxTokens === undefined ? {} : { max_tokens: request.maxTokens })
+      })
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new AIError("AUTHENTICATION", "The cloud AI credentials were rejected.");
+      }
+      if (response.status === 429) {
+        throw new AIError("RATE_LIMIT", "The cloud AI provider rate limit was reached.");
+      }
+      throw new AIError(
+        response.status >= 400 && response.status < 500 ? "INVALID_REQUEST" : "PROVIDER_FAILURE",
+        "The cloud AI provider rejected the streaming request."
+      );
+    }
+
+    if (!response.body) {
+      throw new AIError("PROVIDER_FAILURE", "The cloud AI provider returned no streaming body.");
+    }
+
+    const id = crypto.randomUUID();
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const payload = trimmed.slice(5).trim();
+          if (!payload) continue;
+          if (payload === "[DONE]") {
+            yield { id, provider: this.id, model: request.model, delta: "", done: true };
+            return;
+          }
+
+          try {
+            const event = JSON.parse(payload) as {
+              choices?: Array<{ delta?: { content?: unknown } }>;
+            };
+            const delta = event.choices?.[0]?.delta?.content;
+            if (typeof delta === "string" && delta.length > 0) {
+              yield { id, provider: this.id, model: request.model, delta, done: false };
+            }
+          } catch {
+            // Ignore malformed SSE records and continue the stream.
+          }
+        }
+
+        if (done) break;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    yield { id, provider: this.id, model: request.model, delta: "", done: true };
   }
 }
