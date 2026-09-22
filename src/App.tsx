@@ -82,28 +82,39 @@ export default function App() {
     })();
   }, []);
 
-  async function persistConversation(currentMessages: Message[]) {
-    if (!window.excellAI || !hydrated || !selectedModel || currentMessages.length <= 1) return;
-    const firstUser = currentMessages.find((message) => message.role === "user");
-    const title = firstUser?.content.trim().slice(0, 60) || "New chat";
-    const now = Date.now();
-    const conversation: Conversation = {
-      id: conversationId,
-      title,
-      modelId: selectedModel.id,
-      providerId: selectedModel.providerId,
-      messages: currentMessages.map(({ id, role, content }) => ({
-        id,
-        role,
-        content,
-        createdAt: now
-      })),
-      createdAt: now,
-      updatedAt: now
-    };
-    await window.excellAI.saveConversation(conversation);
-    setConversations((current) => [conversation, ...current.filter((item) => item.id !== conversation.id)]);
-  }
+  useEffect(() => {
+    if (!hydrated || !window.excellAI || !selectedModel || messages.length <= 1) return;
+
+    const timer = window.setTimeout(() => {
+      const firstUser = messages.find((message) => message.role === "user");
+      if (!firstUser) return;
+
+      const now = Date.now();
+      const conversation: Conversation = {
+        id: conversationId,
+        title: firstUser.content.trim().slice(0, 60) || "New chat",
+        modelId: selectedModel.id,
+        providerId: selectedModel.providerId,
+        messages: messages.map(({ id, role, content }) => ({
+          id,
+          role,
+          content,
+          createdAt: now
+        })),
+        createdAt: now,
+        updatedAt: now
+      };
+
+      void window.excellAI.saveConversation(conversation).then(() => {
+        setConversations((current) => [
+          conversation,
+          ...current.filter((item) => item.id !== conversation.id)
+        ]);
+      }).catch(() => undefined);
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [messages, conversationId, hydrated, selectedModel]);
 
   async function sendMessage() {
     const text = input.trim();
