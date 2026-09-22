@@ -1,6 +1,7 @@
 export type AIErrorCode =
   | "PROVIDER_NOT_FOUND"
   | "MODEL_NOT_FOUND"
+  | "PROVIDER_NOT_CONFIGURED"
   | "AUTHENTICATION"
   | "RATE_LIMIT"
   | "TIMEOUT"
@@ -28,5 +29,11 @@ export class ProviderNotFoundError extends AIError {
 export class ModelNotFoundError extends AIError {
   constructor(modelId: string) {
     super("MODEL_NOT_FOUND", `AI model not registered: ${modelId}`);
+  }
+}
+
+export class ProviderNotConfiguredError extends AIError {
+  constructor(providerId: string) {
+    super("PROVIDER_NOT_CONFIGURED", `AI provider is not configured: ${providerId}`);
   }
 }
