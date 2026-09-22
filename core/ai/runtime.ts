@@ -5,4 +5,4 @@ import { registerCloudProviders } from "./providers/configured";
 export const aiGateway = new AIGateway();
 
 aiGateway.registerProvider(new MockProvider());
-registerCloudProviders();
+registerCloudProviders(aiGateway);
