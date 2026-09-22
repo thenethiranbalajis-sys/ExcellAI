@@ -14,6 +14,10 @@ contextBridge.exposeInMainWorld("excellAI", {
     return () => ipcRenderer.removeListener("ai:stream-chunk", handler);
   },
   listModels: () => ipcRenderer.invoke("models:list"),
+  listConversations: () => ipcRenderer.invoke("conversations:list"),
+  getConversation: (id: string) => ipcRenderer.invoke("conversations:get", id),
+  saveConversation: (conversation: unknown) => ipcRenderer.invoke("conversations:save", conversation),
+  deleteConversation: (id: string) => ipcRenderer.invoke("conversations:delete", id),
   setCredential: (providerId: CloudProviderId, apiKey: string) =>
     ipcRenderer.invoke("credentials:set", providerId, apiKey),
   getCredentialStatus: (providerId: CloudProviderId) =>
