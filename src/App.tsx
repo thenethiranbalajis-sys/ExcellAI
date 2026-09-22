@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage } from "../core/ai/types";
 import type { Conversation } from "../core/chat/types";
 import type { ModelDefinition } from "../core/ai/model-registry";
@@ -40,6 +40,8 @@ export default function App() {
   const [savingProvider, setSavingProvider] = useState<CloudProviderId | null>(null);
   const [settingsMessage, setSettingsMessage] = useState("");
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const conversationsRef = useRef<Conversation[]>([]);
+  conversationsRef.current = conversations;
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID());
   const [hydrated, setHydrated] = useState(false);
 
@@ -102,13 +104,13 @@ export default function App() {
           role: message.role,
           content: message.content,
           createdAt: (() => {
-            const existing = conversations
+            const existing = conversationsRef.current
               .find((item) => item.id === conversationId)
               ?.messages.find((item) => item.id === message.id);
             return existing?.createdAt ?? now;
           })()
         })),
-        createdAt: conversations.find((item) => item.id === conversationId)?.createdAt ?? now,
+        createdAt: conversationsRef.current.find((item) => item.id === conversationId)?.createdAt ?? now,
         updatedAt: now
       };
 
@@ -121,7 +123,7 @@ export default function App() {
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [messages, conversationId, conversations, hydrated, selectedModel]);
+  }, [messages, conversationId, hydrated, selectedModel]);
 
   async function sendMessage() {
     const text = input.trim();
