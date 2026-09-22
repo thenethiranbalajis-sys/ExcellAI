@@ -1,7 +1,11 @@
 import { MemoryCredentialStore } from "./memory-store";
 import type { CredentialStore } from "./types";
 
-export let credentialStore: CredentialStore = new MemoryCredentialStore();
+let credentialStore: CredentialStore = new MemoryCredentialStore();
+
+export function getCredentialStore(): CredentialStore {
+  return credentialStore;
+}
 
 export function setCredentialStore(store: CredentialStore): void {
   credentialStore = store;
