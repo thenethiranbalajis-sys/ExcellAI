@@ -30,7 +30,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [models, setModels] = useState<ModelDefinition[]>([]);
-  const [modelId, setModelId] = useState("gpt-4o");
+  const [modelId, setModelId] = useState("gpt-5.6-luna");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [keys, setKeys] = useState<Partial<Record<CloudProviderId, string>>>({});
   const [configured, setConfigured] = useState<Partial<Record<CloudProviderId, boolean>>>({});
@@ -45,20 +45,27 @@ export default function App() {
   useEffect(() => {
     void (async () => {
       if (!window.excellAI) return;
-      const available = await window.excellAI.listModels();
-      setModels(available);
-      if (available.length && !available.some((model) => model.id === modelId)) {
-        setModelId(available[0].id);
+
+      try {
+        const available = await window.excellAI.listModels();
+        setModels(available);
+
+        if (available.length && !available.some((model) => model.id === modelId)) {
+          setModelId(available[0].id);
+        }
+
+        const statusEntries = await Promise.all(
+          providers.map(async (providerId) => [
+            providerId,
+            (await window.excellAI!.getCredentialStatus(providerId)).configured
+          ] as const)
+        );
+        setConfigured(Object.fromEntries(statusEntries));
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "ExcellAI could not initialize.");
       }
-      const statusEntries = await Promise.all(
-        providers.map(async (providerId) => [
-          providerId,
-          (await window.excellAI!.getCredentialStatus(providerId)).configured
-        ] as const)
-      );
-      setConfigured(Object.fromEntries(statusEntries));
     })();
-  }, [modelId]);
+  }, []);
 
   async function sendMessage() {
     const text = input.trim();
@@ -95,6 +102,7 @@ export default function App() {
     if (!apiKey || !window.excellAI) return;
     setSavingProvider(providerId);
     setSettingsMessage("");
+
     try {
       await window.excellAI.setCredential(providerId, apiKey);
       setKeys((current) => ({ ...current, [providerId]: "" }));
@@ -109,9 +117,15 @@ export default function App() {
 
   async function removeKey(providerId: CloudProviderId) {
     if (!window.excellAI) return;
-    await window.excellAI.deleteCredential(providerId);
-    setConfigured((current) => ({ ...current, [providerId]: false }));
-    setSettingsMessage(providerNames[providerId] + " credentials removed.");
+    setSettingsMessage("");
+
+    try {
+      await window.excellAI.deleteCredential(providerId);
+      setConfigured((current) => ({ ...current, [providerId]: false }));
+      setSettingsMessage(providerNames[providerId] + " credentials removed.");
+    } catch (cause) {
+      setSettingsMessage(cause instanceof Error ? cause.message : "Could not remove credentials.");
+    }
   }
 
   function newChat() {
