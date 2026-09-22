@@ -24,6 +24,8 @@ const providerNames: Record<CloudProviderId, string> = {
 
 const providers = Object.keys(providerNames) as CloudProviderId[];
 
+const providerOrder: CloudProviderId[] = ["openai", "gemini", "anthropic", "xai", "mistral", "deepseek", "cohere"];
+
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([welcome]);
   const [input, setInput] = useState("");
@@ -95,13 +97,18 @@ export default function App() {
         title: firstUser.content.trim().slice(0, 60) || "New chat",
         modelId: selectedModel.id,
         providerId: selectedModel.providerId,
-        messages: messages.map(({ id, role, content }) => ({
-          id,
-          role,
-          content,
-          createdAt: now
+        messages: messages.map((message) => ({
+          id: message.id,
+          role: message.role,
+          content: message.content,
+          createdAt: (() => {
+            const existing = conversations
+              .find((item) => item.id === conversationId)
+              ?.messages.find((item) => item.id === message.id);
+            return existing?.createdAt ?? now;
+          })()
         })),
-        createdAt: now,
+        createdAt: conversations.find((item) => item.id === conversationId)?.createdAt ?? now,
         updatedAt: now
       };
 
@@ -114,7 +121,7 @@ export default function App() {
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [messages, conversationId, hydrated, selectedModel]);
+  }, [messages, conversationId, conversations, hydrated, selectedModel]);
 
   async function sendMessage() {
     const text = input.trim();
@@ -248,9 +255,17 @@ export default function App() {
         <header className="topbar">
           <button className="icon-button" onClick={() => setSidebarOpen((v) => !v)}>☰</button>
           <select className="model-select" value={modelId} onChange={(e) => setModelId(e.target.value)} disabled={!models.length || busy}>
-            {models.map((model) => (
-              <option key={model.id} value={model.id}>{model.displayName}</option>
-            ))}
+            {providerOrder.map((providerId) => {
+              const providerModels = models.filter((model) => model.providerId === providerId);
+              if (!providerModels.length) return null;
+              return (
+                <optgroup key={providerId} label={providerNames[providerId]}>
+                  {providerModels.map((model) => (
+                    <option key={model.id} value={model.id}>{model.displayName}</option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </select>
           <div className="topbar-spacer" />
           <button className="icon-button" onClick={() => setSettingsOpen((value) => !value)}>⚙</button>
