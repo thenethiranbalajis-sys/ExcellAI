@@ -87,7 +87,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!hydrated || !window.excellAI || !selectedModel || messages.length <= 1) return;
+    const bridge = window.excellAI;
+    if (!hydrated || !bridge || !selectedModel || messages.length <= 1) return;
 
     const timer = window.setTimeout(() => {
       const firstUser = messages.find((message) => message.role === "user");
