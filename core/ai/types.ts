@@ -11,7 +11,6 @@ export interface ChatRequest {
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
-  signal?: AbortSignal;
 }
 
 export interface ChatResponse {
