@@ -87,18 +87,9 @@ export default function App() {
         { id: assistantId, role: "assistant", content: "" }
       ]);
 
+      let receivedText = false;
       const cleanup = window.excellAI.onAIStreamChunk((chunk) => {
-        if (chunk.id && chunk.id !== assistantId) {
-          setMessages((current) =>
-            current.map((message) =>
-              message.id === assistantId
-                ? { ...message, content: message.content + chunk.delta }
-                : message
-            )
-          );
-          return;
-        }
-
+        if (chunk.delta) receivedText = true;
         setMessages((current) =>
           current.map((message) =>
             message.id === assistantId
@@ -113,6 +104,16 @@ export default function App() {
           model: selectedModel.id,
           messages: nextMessages.map(({ role, content }) => ({ role, content }))
         });
+
+        if (!receivedText) {
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === assistantId
+                ? { ...message, content: "The AI returned an empty response." }
+                : message
+            )
+          );
+        }
       } finally {
         cleanup();
       }
