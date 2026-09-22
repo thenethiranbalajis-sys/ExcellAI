@@ -167,13 +167,6 @@ export default function App() {
         cleanup();
       }
 
-      const finalMessages = await new Promise<Message[]>((resolve) => {
-        setMessages((current) => {
-          resolve(current);
-          return current;
-        });
-      });
-      await persistConversation(finalMessages);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The AI request failed.");
     } finally {
