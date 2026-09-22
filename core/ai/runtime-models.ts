@@ -17,23 +17,23 @@ modelRegistry.register({
 });
 
 modelRegistry.register({
-  id: "claude-sonnet",
+  id: "claude-sonnet-4-6",
   providerId: "anthropic",
-  displayName: "Anthropic Claude",
+  displayName: "Anthropic Claude Sonnet 4.6",
   capabilities: { streaming: true, vision: true, toolCalling: true, structuredOutput: true }
 });
 
 modelRegistry.register({
-  id: "grok-4.6",
+  id: "grok-4.7",
   providerId: "xai",
-  displayName: "xAI Grok 4.6",
+  displayName: "xAI Grok 4.7",
   capabilities: { streaming: true, vision: true, toolCalling: true, structuredOutput: true }
 });
 
 modelRegistry.register({
-  id: "mistral-medium-3.5",
+  id: "mistral-medium-2505",
   providerId: "mistral",
-  displayName: "Mistral Medium 3.5",
+  displayName: "Mistral Medium 3",
   capabilities: { streaming: true, vision: true, toolCalling: true, structuredOutput: true }
 });
 
