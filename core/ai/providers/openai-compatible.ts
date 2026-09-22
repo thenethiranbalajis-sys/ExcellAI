@@ -110,9 +110,9 @@ export class OpenAICompatibleProvider {
       while (true) {
         const { value, done } = await reader.read();
         totalBytes += value?.byteLength ?? 0;
-        if (totalBytes > 4 * 1024 * 1024) {
+        if (totalBytes > 1_000_000_000) {
           await reader.cancel();
-          throw new AIError("PROVIDER_FAILURE", "The cloud AI streaming response was unexpectedly large.");
+          throw new AIError("PROVIDER_FAILURE", "The cloud AI streaming response exceeded the 1000 MB limit.");
         }
         buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
         const lines = buffer.split("\n");
