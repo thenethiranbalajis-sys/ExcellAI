@@ -1,17 +1,11 @@
-import { aiGateway } from "../runtime";
+import type { AIGateway } from "../gateway";
 import { credentialStore } from "../credentials/runtime";
 import { OpenAIProvider } from "./openai";
 import { GeminiProvider } from "./gemini";
 import { AnthropicProvider } from "./anthropic";
 
-let registered = false;
-
-export function registerCloudProviders(): void {
-  if (registered) return;
-
-  aiGateway.registerProvider(new OpenAIProvider(credentialStore));
-  aiGateway.registerProvider(new GeminiProvider(credentialStore));
-  aiGateway.registerProvider(new AnthropicProvider(credentialStore));
-
-  registered = true;
+export function registerCloudProviders(gateway: AIGateway): void {
+  gateway.registerProvider(new OpenAIProvider(credentialStore));
+  gateway.registerProvider(new GeminiProvider(credentialStore));
+  gateway.registerProvider(new AnthropicProvider(credentialStore));
 }
