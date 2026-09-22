@@ -5,11 +5,14 @@ import { aiOrchestrator } from "../../core/ai/orchestrator/orchestrator";
 export function registerAIHandlers(): void {
   ipcMain.handle(
     "ai:chat",
-    async (_event, providerId: string, request: ChatRequest) =>
-      aiOrchestrator.run({
+    async (_event, providerId: string, request: ChatRequest) => {
+      const result = await aiOrchestrator.run({
         providerId,
         model: request.model,
         messages: request.messages
-      })
+      });
+
+      return result.response;
+    }
   );
 }
