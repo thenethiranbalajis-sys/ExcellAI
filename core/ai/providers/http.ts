@@ -11,6 +11,10 @@ export async function postJson(
   body: unknown,
   timeoutMs = 60_000
 ): Promise<JsonHttpResponse> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new AIError("INVALID_REQUEST", "The cloud AI timeout must be positive.");
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -23,7 +27,7 @@ export async function postJson(
       signal: controller.signal
     });
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
+    if (error instanceof Error && error.name === "AbortError") {
       throw new AIError("TIMEOUT", "The cloud AI request timed out.", error);
     }
     throw new AIError("PROVIDER_FAILURE", "The cloud AI provider could not be reached.", error);
