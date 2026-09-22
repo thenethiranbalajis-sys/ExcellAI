@@ -53,20 +53,35 @@ export class OpenAICompatibleProvider {
     const key = await this.credentials.get(this.config.id);
     if (!key) throw new ProviderNotConfiguredError(this.config.id);
 
-    const response = await fetch(this.config.baseUrl + "/chat/completions", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: "Bearer " + key
-      },
-      body: JSON.stringify({
-        model: request.model,
-        messages: request.messages,
-        stream: true,
-        ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
-        ...(request.maxTokens === undefined ? {} : { max_tokens: request.maxTokens })
-      })
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+
+    let response: Response;
+    try {
+      response = await fetch(this.config.baseUrl + "/chat/completions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer " + key
+        },
+        body: JSON.stringify({
+          model: request.model,
+          messages: request.messages,
+          stream: true,
+          ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+          ...(request.maxTokens === undefined ? {} : { max_tokens: request.maxTokens })
+        }),
+        signal: controller.signal
+      });
+    } catch (error) {
+      clearTimeout(timeout);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new AIError("TIMEOUT", "The cloud AI streaming request timed out.", error);
+      }
+      throw new AIError("PROVIDER_FAILURE", "The cloud AI provider could not be reached.", error);
+    }
+
+    clearTimeout(timeout);
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
@@ -89,10 +104,16 @@ export class OpenAICompatibleProvider {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let totalBytes = 0;
 
     try {
       while (true) {
         const { value, done } = await reader.read();
+        totalBytes += value?.byteLength ?? 0;
+        if (totalBytes > 4 * 1024 * 1024) {
+          await reader.cancel();
+          throw new AIError("PROVIDER_FAILURE", "The cloud AI streaming response was unexpectedly large.");
+        }
         buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
