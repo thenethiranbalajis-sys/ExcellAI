@@ -3,6 +3,8 @@ import path from "node:path";
 import { registerIPCHandlers } from "./ipc";
 import { setCredentialStore } from "../core/ai/credentials/runtime";
 import { SecureCredentialStore } from "./services/secure-credentials";
+import { aiGateway } from "../core/ai/runtime";
+import { registerCloudProviders } from "../core/ai/providers/configured";
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -33,6 +35,7 @@ ipcMain.handle("app:get-info", () => ({
 
 app.whenReady().then(() => {
   setCredentialStore(new SecureCredentialStore());
+  registerCloudProviders(aiGateway);
   registerIPCHandlers();
   createWindow();
 
