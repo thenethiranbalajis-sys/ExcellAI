@@ -34,8 +34,9 @@ ipcMain.handle("app:get-info", () => ({
 }));
 
 app.whenReady().then(() => {
-  setCredentialStore(new SecureCredentialStore());
-  registerCloudProviders(aiGateway);
+  const secureCredentials = new SecureCredentialStore();
+  setCredentialStore(secureCredentials);
+  registerCloudProviders(aiGateway, secureCredentials);
   registerIPCHandlers();
   createWindow();
 
