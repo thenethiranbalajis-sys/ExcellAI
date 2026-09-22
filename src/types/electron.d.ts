@@ -1,4 +1,6 @@
 import type { ChatRequest, ChatResponse } from "../../core/ai/types";
+import type { ModelDefinition } from "../../core/ai/model-registry";
+import type { CloudProviderId } from "../../core/ai/credentials/types";
 
 export interface ExcellAIAppInfo {
   name: string;
@@ -8,6 +10,10 @@ export interface ExcellAIAppInfo {
 export interface ExcellAIElectronAPI {
   getAppInfo(): Promise<ExcellAIAppInfo>;
   aiChat(providerId: string, request: ChatRequest): Promise<ChatResponse>;
+  listModels(): Promise<ModelDefinition[]>;
+  setCredential(providerId: CloudProviderId, apiKey: string): Promise<{ configured: boolean }>;
+  getCredentialStatus(providerId: CloudProviderId): Promise<{ configured: boolean }>;
+  deleteCredential(providerId: CloudProviderId): Promise<{ configured: boolean }>;
 }
 
 declare global {
