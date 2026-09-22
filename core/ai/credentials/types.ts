@@ -1,4 +1,11 @@
-export type CloudProviderId = "openai" | "gemini" | "anthropic";
+export type CloudProviderId =
+  | "openai"
+  | "gemini"
+  | "anthropic"
+  | "xai"
+  | "mistral"
+  | "deepseek"
+  | "cohere";
 
 export interface ProviderCredential {
   providerId: CloudProviderId;
