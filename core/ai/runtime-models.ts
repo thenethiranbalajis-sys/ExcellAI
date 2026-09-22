@@ -3,9 +3,9 @@ import { ModelRegistry } from "./model-registry";
 export const modelRegistry = new ModelRegistry();
 
 modelRegistry.register({
-  id: "gpt-4o",
+  id: "gpt-5.6-luna",
   providerId: "openai",
-  displayName: "OpenAI GPT-4o",
+  displayName: "OpenAI GPT-5.6 Luna",
   capabilities: { streaming: true, vision: true, toolCalling: true, structuredOutput: true }
 });
 
@@ -31,9 +31,9 @@ modelRegistry.register({
 });
 
 modelRegistry.register({
-  id: "mistral-medium-2505",
+  id: "mistral-medium-3-5",
   providerId: "mistral",
-  displayName: "Mistral Medium 3",
+  displayName: "Mistral Medium 3.5",
   capabilities: { streaming: true, vision: true, toolCalling: true, structuredOutput: true }
 });
 
