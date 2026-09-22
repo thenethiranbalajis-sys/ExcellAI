@@ -25,7 +25,11 @@ export class SecureCredentialStore implements CredentialStore {
 
       return parsed as StoredCredentials;
     } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
+      const code =
+        error && typeof error === "object" && "code" in error
+          ? String((error as { code?: unknown }).code)
+          : undefined;
+
       if (code === "ENOENT") return {};
       if (error instanceof SyntaxError) {
         throw new Error("Stored credential data is corrupted.");
@@ -44,9 +48,14 @@ export class SecureCredentialStore implements CredentialStore {
     const encrypted = safeStorage.encryptString(JSON.stringify(values));
     const tempPath = this.filePath + ".tmp";
 
-    await fs.writeFile(tempPath, encrypted, { mode: 0o600 });
-    await fs.rm(this.filePath, { force: true });
-    await fs.rename(tempPath, this.filePath);
+    try {
+      await fs.writeFile(tempPath, encrypted, { mode: 0o600 });
+      await fs.rm(this.filePath, { force: true });
+      await fs.rename(tempPath, this.filePath);
+    } catch (error) {
+      await fs.rm(tempPath, { force: true }).catch(() => undefined);
+      throw error;
+    }
   }
 
   private async serialized<T>(operation: () => Promise<T>): Promise<T> {
@@ -69,7 +78,10 @@ export class SecureCredentialStore implements CredentialStore {
   }
 
   async get(providerId: CloudProviderId): Promise<string | null> {
-    return this.read().then((values) => values[providerId] ?? null);
+    return this.serialized(async () => {
+      const values = await this.read();
+      return values[providerId] ?? null;
+    });
   }
 
   async set(providerId: CloudProviderId, apiKey: string): Promise<void> {
