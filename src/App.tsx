@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChatMessage } from "../core/ai/types";
+import type { Conversation } from "../core/chat/types";
 import type { ModelDefinition } from "../core/ai/model-registry";
 import type { CloudProviderId } from "../core/ai/credentials/types";
 
@@ -36,6 +37,9 @@ export default function App() {
   const [configured, setConfigured] = useState<Partial<Record<CloudProviderId, boolean>>>({});
   const [savingProvider, setSavingProvider] = useState<CloudProviderId | null>(null);
   const [settingsMessage, setSettingsMessage] = useState("");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID());
+  const [hydrated, setHydrated] = useState(false);
 
   const selectedModel = useMemo(
     () => models.find((model) => model.id === modelId),
@@ -61,11 +65,45 @@ export default function App() {
           ] as const)
         );
         setConfigured(Object.fromEntries(statusEntries));
+        const saved = await window.excellAI.listConversations();
+        setConversations(saved);
+        const latest = saved[0];
+        if (latest) {
+          setConversationId(latest.id);
+          setMessages(latest.messages);
+          if (available.some((model) => model.id === latest.modelId)) {
+            setModelId(latest.modelId);
+          }
+        }
+        setHydrated(true);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "ExcellAI could not initialize.");
       }
     })();
   }, []);
+
+  async function persistConversation(currentMessages: Message[]) {
+    if (!window.excellAI || !hydrated || !selectedModel || currentMessages.length <= 1) return;
+    const firstUser = currentMessages.find((message) => message.role === "user");
+    const title = firstUser?.content.trim().slice(0, 60) || "New chat";
+    const now = Date.now();
+    const conversation: Conversation = {
+      id: conversationId,
+      title,
+      modelId: selectedModel.id,
+      providerId: selectedModel.providerId,
+      messages: currentMessages.map(({ id, role, content }) => ({
+        id,
+        role,
+        content,
+        createdAt: now
+      })),
+      createdAt: now,
+      updatedAt: now
+    };
+    await window.excellAI.saveConversation(conversation);
+    setConversations((current) => [conversation, ...current.filter((item) => item.id !== conversation.id)]);
+  }
 
   async function sendMessage() {
     const text = input.trim();
@@ -117,6 +155,14 @@ export default function App() {
       } finally {
         cleanup();
       }
+
+      const finalMessages = await new Promise<Message[]>((resolve) => {
+        setMessages((current) => {
+          resolve(current);
+          return current;
+        });
+      });
+      await persistConversation(finalMessages);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The AI request failed.");
     } finally {
@@ -156,8 +202,19 @@ export default function App() {
   }
 
   function newChat() {
+    setConversationId(crypto.randomUUID());
     setMessages([welcome]);
     setInput("");
+    setError("");
+  }
+
+  async function openConversation(id: string) {
+    if (!window.excellAI || busy) return;
+    const conversation = await window.excellAI.getConversation(id);
+    if (!conversation) return;
+    setConversationId(conversation.id);
+    setMessages(conversation.messages);
+    setModelId(conversation.modelId);
     setError("");
   }
 
@@ -171,6 +228,11 @@ export default function App() {
             <span>Workspace</span>
             <button onClick={newChat}>⌂ Home</button>
             <button>◫ Chats</button>
+            {conversations.slice(0, 8).map((conversation) => (
+              <button key={conversation.id} className="conversation-item" onClick={() => void openConversation(conversation.id)}>
+                {conversation.title}
+              </button>
+            ))}
             <button>◈ Projects</button>
             <button onClick={() => setSettingsOpen((value) => !value)}>⚙ Settings</button>
           </div>
