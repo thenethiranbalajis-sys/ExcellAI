@@ -137,7 +137,8 @@ export default function App() {
     setBusy(true);
 
     try {
-      if (!window.excellAI) throw new Error("ExcellAI desktop bridge is unavailable.");
+      const bridge = window.excellAI;
+      if (!bridge) throw new Error("ExcellAI desktop bridge is unavailable.");
 
       const assistantId = crypto.randomUUID();
       setMessages((current) => [
@@ -146,7 +147,7 @@ export default function App() {
       ]);
 
       let receivedText = false;
-      const cleanup = window.excellAI.onAIStreamChunk((chunk) => {
+      const cleanup = bridge.onAIStreamChunk((chunk) => {
         if (chunk.delta) receivedText = true;
         setMessages((current) =>
           current.map((message) =>
@@ -158,7 +159,7 @@ export default function App() {
       });
 
       try {
-        await window.excellAI.aiStream(selectedModel.providerId, {
+        await bridge.aiStream(selectedModel.providerId, {
           model: selectedModel.id,
           messages: nextMessages.map(({ role, content }) => ({ role, content }))
         });
