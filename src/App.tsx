@@ -81,15 +81,41 @@ export default function App() {
     try {
       if (!window.excellAI) throw new Error("ExcellAI desktop bridge is unavailable.");
 
-      const response = await window.excellAI.aiChat(selectedModel.providerId, {
-        model: selectedModel.id,
-        messages: nextMessages.map(({ role, content }) => ({ role, content }))
-      });
-
+      const assistantId = crypto.randomUUID();
       setMessages((current) => [
         ...current,
-        { id: response.id, role: "assistant", content: response.content }
+        { id: assistantId, role: "assistant", content: "" }
       ]);
+
+      const cleanup = window.excellAI.onAIStreamChunk((chunk) => {
+        if (chunk.id && chunk.id !== assistantId) {
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === assistantId
+                ? { ...message, content: message.content + chunk.delta }
+                : message
+            )
+          );
+          return;
+        }
+
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId
+              ? { ...message, content: message.content + chunk.delta }
+              : message
+          )
+        );
+      });
+
+      try {
+        await window.excellAI.aiStream(selectedModel.providerId, {
+          model: selectedModel.id,
+          messages: nextMessages.map(({ role, content }) => ({ role, content }))
+        });
+      } finally {
+        cleanup();
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The AI request failed.");
     } finally {
@@ -210,7 +236,7 @@ export default function App() {
                 </div>
               </article>
             ))}
-            {busy && (
+            {busy && messages[messages.length - 1]?.role !== "assistant" && (
               <article className="message assistant">
                 <div className="avatar">E</div>
                 <div className="message-content">
