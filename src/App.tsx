@@ -114,7 +114,7 @@ export default function App() {
         updatedAt: now
       };
 
-      void window.excellAI.saveConversation(conversation).then(() => {
+      void bridge.saveConversation(conversation).then(() => {
         setConversations((current) => [
           conversation,
           ...current.filter((item) => item.id !== conversation.id)
