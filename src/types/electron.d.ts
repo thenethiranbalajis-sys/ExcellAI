@@ -13,6 +13,10 @@ export interface ExcellAIElectronAPI {
   aiStream(providerId: string, request: ChatRequest): Promise<{ complete: boolean }>;
   onAIStreamChunk(listener: (chunk: ChatStreamChunk) => void): () => void;
   listModels(): Promise<ModelDefinition[]>;
+  listConversations(): Promise<import("../../core/chat/types").Conversation[]>;
+  getConversation(id: string): Promise<import("../../core/chat/types").Conversation | null>;
+  saveConversation(conversation: import("../../core/chat/types").Conversation): Promise<{ saved: boolean }>;
+  deleteConversation(id: string): Promise<{ deleted: boolean }>;
   setCredential(providerId: CloudProviderId, apiKey: string): Promise<{ configured: boolean }>;
   getCredentialStatus(providerId: CloudProviderId): Promise<{ configured: boolean }>;
   deleteCredential(providerId: CloudProviderId): Promise<{ configured: boolean }>;
