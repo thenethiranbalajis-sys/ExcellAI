@@ -86,10 +86,16 @@ export class OpenAIProvider {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let totalBytes = 0;
 
     try {
       while (true) {
         const { value, done } = await reader.read();
+        totalBytes += value?.byteLength ?? 0;
+        if (totalBytes > 1_000_000_000) {
+          await reader.cancel();
+          throw new AIError("PROVIDER_FAILURE", "The OpenAI streaming response exceeded the 1000 MB limit.");
+        }
         buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
