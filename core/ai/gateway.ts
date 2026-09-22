@@ -38,9 +38,24 @@ export class AIGateway {
   chatStream(providerId: string, request: ChatRequest): AsyncIterable<ChatStreamChunk> {
     this.validateModel(providerId, request);
     const provider = this.getProvider(providerId);
-    if (!provider.chatStream) {
-      throw new AIError("PROVIDER_FAILURE", "Streaming is not available for this AI provider.");
-    }
-    return provider.chatStream(request);
+    if (provider.chatStream) return provider.chatStream(request);
+
+    return (async function* () {
+      const response = await provider.chat(request);
+      yield {
+        id: response.id,
+        provider: response.provider,
+        model: response.model,
+        delta: response.content,
+        done: false
+      };
+      yield {
+        id: response.id,
+        provider: response.provider,
+        model: response.model,
+        delta: "",
+        done: true
+      };
+    })();
   }
 }
