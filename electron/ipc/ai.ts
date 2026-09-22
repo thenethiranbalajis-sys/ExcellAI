@@ -1,7 +1,15 @@
 import { ipcMain } from "electron";
 import type { ChatRequest } from "../../core/ai/types";
-import { aiGateway } from "../../core/ai/runtime";
+import { aiOrchestrator } from "../../core/ai/orchestrator/orchestrator";
 
 export function registerAIHandlers(): void {
-  ipcMain.handle("ai:chat", async (_event, providerId: string, request: ChatRequest) => aiGateway.chat(providerId, request));
+  ipcMain.handle(
+    "ai:chat",
+    async (_event, providerId: string, request: ChatRequest) =>
+      aiOrchestrator.run({
+        providerId,
+        model: request.model,
+        messages: request.messages
+      })
+  );
 }
